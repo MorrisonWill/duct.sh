@@ -299,6 +299,18 @@ func (p *Proxy) serveLandingPage(w http.ResponseWriter, r *http.Request) {
             color: #666;
             line-height: 1.5;
         }
+        .footer {
+            margin-top: 3rem;
+            font-size: 0.875rem;
+            color: #555;
+        }
+        .footer a {
+            color: #555;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            color: #888;
+        }
     </style>
 </head>
 <body>
@@ -324,6 +336,7 @@ func (p *Proxy) serveLandingPage(w http.ResponseWriter, r *http.Request) {
                 <div class="feature-desc">Copy any request as a curl command to your clipboard.</div>
             </div>
         </div>
+        <div class="footer">Made by <a href="https://github.com/MorrisonWill">Will Morrison</a></div>
     </div>
 </body>
 </html>`
