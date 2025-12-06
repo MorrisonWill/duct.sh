@@ -1,0 +1,7 @@
+duct.sh, *.duct.sh {
+    tls {
+        dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+    }
+    reverse_proxy {{upstreams "duct" 80}}
+    log
+}

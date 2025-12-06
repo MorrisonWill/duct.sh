@@ -1,16 +1,33 @@
 version: '3.8'
 
 services:
+  caddy:
+    image: caddybuilds/caddy-cloudflare:2.10.2
+    command: caddy run -c /config/Caddyfile
+    environment:
+      CADDY_ADMIN: unix//run/caddy/admin.sock
+    env_file:
+      - .env
+    volumes:
+      - /var/lib/uncloud/caddy:/data
+      - /var/lib/uncloud/caddy:/config
+      - /run/uncloud/caddy:/run/caddy
+    x-ports:
+      - 80:80@host
+      - 443:443@host
+    x-caddy: Caddyfile
+    deploy:
+      mode: global
+
   duct:
     build: .
-    ports:
-      - "22:22"
-      - "80:80"
-      - "443:443"
+    x-ports:
+      - "22:22/tcp@host"
     volumes:
       - duct-data:/data
     environment:
       - BASE_DOMAIN=duct.sh
+      - USE_HTTPS=true
     restart: unless-stopped
 
 volumes:

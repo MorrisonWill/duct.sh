@@ -19,7 +19,7 @@ func main() {
 	cfg := config.Load()
 
 	eventHub := events.NewHub(100)
-	tunnelManager := tunnel.NewManager(cfg.BaseDomain)
+	tunnelManager := tunnel.NewManager(cfg.BaseDomain, cfg.HTTPPort, cfg.UseHTTPS)
 
 	// Start HTTP proxy
 	httpProxy := proxy.New(tunnelManager, eventHub, cfg.BaseDomain, cfg.HTTPPort)

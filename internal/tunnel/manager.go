@@ -26,15 +26,19 @@ type Manager struct {
 	tunnels    map[string]*Tunnel // subdomain -> tunnel
 	byID       map[string]*Tunnel // tunnelID -> tunnel
 	baseDomain string
+	httpPort   int
+	useHTTPS   bool
 	nextPort   uint32 // port allocator for -R 0 requests
 }
 
 // NewManager creates a new tunnel manager
-func NewManager(baseDomain string) *Manager {
+func NewManager(baseDomain string, httpPort int, useHTTPS bool) *Manager {
 	return &Manager{
 		tunnels:    make(map[string]*Tunnel),
 		byID:       make(map[string]*Tunnel),
 		baseDomain: baseDomain,
+		httpPort:   httpPort,
+		useHTTPS:   useHTTPS,
 		nextPort:   10000,
 	}
 }
@@ -69,7 +73,17 @@ func (m *Manager) CreateTunnel(sshConn *gossh.ServerConn, bindAddr string, reque
 	m.byID[tunnelID] = tunnel
 	m.mu.Unlock()
 
-	url := fmt.Sprintf("https://%s.%s", subdomain, m.baseDomain)
+	scheme := "http"
+	if m.useHTTPS {
+		scheme = "https"
+	}
+
+	var url string
+	if m.useHTTPS || m.httpPort == 80 {
+		url = fmt.Sprintf("%s://%s.%s", scheme, subdomain, m.baseDomain)
+	} else {
+		url = fmt.Sprintf("%s://%s.%s:%d", scheme, subdomain, m.baseDomain, m.httpPort)
+	}
 	return tunnel, url, allocatedPort
 }
 

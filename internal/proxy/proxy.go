@@ -58,7 +58,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	subdomain := p.extractSubdomain(r.Host)
 	if subdomain == "" {
-		http.Error(w, "Invalid host", http.StatusBadRequest)
+		p.serveLandingPage(w, r)
 		return
 	}
 
@@ -150,4 +150,63 @@ func (p *Proxy) extractClientIP(r *http.Request) string {
 		return r.RemoteAddr
 	}
 	return ip
+}
+
+func (p *Proxy) serveLandingPage(w http.ResponseWriter, r *http.Request) {
+	html := `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>duct.sh</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0a0a0a;
+            color: #e5e5e5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+        }
+        h1 {
+            font-size: 3rem;
+            font-weight: 300;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+        .tagline {
+            font-size: 1.25rem;
+            color: #888;
+            margin-bottom: 3rem;
+        }
+        .code {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1.5rem 2rem;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 1rem;
+            color: #4ade80;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>duct.sh</h1>
+        <p class="tagline">Expose local servers to the internet via SSH.</p>
+        <div class="code">ssh -R 0:localhost:3000 duct.sh</div>
+    </div>
+</body>
+</html>`
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(html))
 }

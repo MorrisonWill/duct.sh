@@ -11,6 +11,7 @@ type Config struct {
 	HostKeyPath string
 	HTTPPort    int
 	BaseDomain  string
+	UseHTTPS    bool
 }
 
 func Load() *Config {
@@ -40,6 +41,9 @@ func Load() *Config {
 	}
 	if keyPath := os.Getenv("HOST_KEY_PATH"); keyPath != "" {
 		cfg.HostKeyPath = keyPath
+	}
+	if useHTTPS := os.Getenv("USE_HTTPS"); useHTTPS == "true" || useHTTPS == "1" {
+		cfg.UseHTTPS = true
 	}
 
 	return cfg

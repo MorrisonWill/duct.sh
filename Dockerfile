@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -7,7 +7,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /duct ./cmd/duct
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /duct ./cmd/duct
 
 FROM alpine:3.19
 

@@ -21,6 +21,9 @@ var quitKeys = key.NewBinding(
 // channelClosedMsg is sent when the event channel is closed
 type channelClosedMsg struct{}
 
+// tickMsg is sent every second to update the uptime display
+type tickMsg time.Time
+
 // Styles holds all TUI styles (created per-session for correct color profiles)
 type Styles struct {
 	Title   lipgloss.Style
@@ -90,7 +93,13 @@ func NewTunnelModel(
 }
 
 func (m *TunnelModel) Init() tea.Cmd {
-	return m.waitForEvent()
+	return tea.Batch(m.waitForEvent(), m.tickCmd())
+}
+
+func (m *TunnelModel) tickCmd() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return tickMsg(t)
+	})
 }
 
 func (m *TunnelModel) waitForEvent() tea.Cmd {
@@ -128,6 +137,9 @@ func (m *TunnelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.requests = m.requests[:50]
 		}
 		return m, m.waitForEvent()
+
+	case tickMsg:
+		return m, m.tickCmd()
 	}
 
 	return m, nil
