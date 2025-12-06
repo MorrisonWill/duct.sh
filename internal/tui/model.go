@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -72,6 +73,8 @@ type TunnelModel struct {
 	height       int
 	quitting     bool
 	styles       Styles
+	viewport     viewport.Model
+	ready        bool
 }
 
 func NewTunnelModel(
@@ -86,7 +89,7 @@ func NewTunnelModel(
 		tunnelURL: tunnelURL,
 		eventCh:   eventCh,
 		cleanup:   cleanup,
-		requests:  make([]events.RequestEvent, 0, 50),
+		requests:  make([]events.RequestEvent, 0),
 		startTime: time.Now(),
 		styles:    styles,
 	}
@@ -112,7 +115,11 @@ func (m *TunnelModel) waitForEvent() tea.Cmd {
 	}
 }
 
+const headerHeight = 7 // title + blank + url + blank + stats + blank + footer buffer
+
 func (m *TunnelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -125,6 +132,18 @@ func (m *TunnelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		viewportHeight := m.height - headerHeight
+		if viewportHeight < 1 {
+			viewportHeight = 1
+		}
+		if !m.ready {
+			m.viewport = viewport.New(m.width, viewportHeight)
+			m.viewport.SetContent(m.renderRequests())
+			m.ready = true
+		} else {
+			m.viewport.Width = m.width
+			m.viewport.Height = viewportHeight
+		}
 
 	case channelClosedMsg:
 		m.quitting = true
@@ -133,8 +152,8 @@ func (m *TunnelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case events.RequestEvent:
 		m.requestCount++
 		m.requests = append([]events.RequestEvent{msg}, m.requests...)
-		if len(m.requests) > 50 {
-			m.requests = m.requests[:50]
+		if m.ready {
+			m.viewport.SetContent(m.renderRequests())
 		}
 		return m, m.waitForEvent()
 
@@ -142,7 +161,24 @@ func (m *TunnelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.tickCmd()
 	}
 
-	return m, nil
+	if m.ready {
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m *TunnelModel) renderRequests() string {
+	if len(m.requests) == 0 {
+		return m.styles.Dim.Italic(true).Render("Waiting for requests...")
+	}
+	lines := make([]string, 0, len(m.requests))
+	for _, r := range m.requests {
+		lines = append(lines, m.formatRequest(r))
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, lines...)
 }
 
 func (m *TunnelModel) View() string {
@@ -170,15 +206,10 @@ func (m *TunnelModel) View() string {
 	)
 
 	var requestsView string
-	if len(m.requests) == 0 {
-		requestsView = m.styles.Dim.Italic(true).Render("Waiting for requests...")
+	if m.ready {
+		requestsView = m.viewport.View()
 	} else {
-		lines := make([]string, 0, len(m.requests))
-		for _, r := range m.requests {
-			line := m.formatRequest(r)
-			lines = append(lines, line)
-		}
-		requestsView = lipgloss.JoinVertical(lipgloss.Left, lines...)
+		requestsView = m.renderRequests()
 	}
 
 	footer := m.styles.Dim.Render("Press q to quit")
