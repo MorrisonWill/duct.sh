@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  duct:
+    build: .
+    ports:
+      - "22:22"
+      - "80:80"
+    volumes:
+      - duct-data:/data
+    environment:
+      - BASE_DOMAIN=duct.sh
+    restart: unless-stopped
+
+volumes:
+  duct-data:
