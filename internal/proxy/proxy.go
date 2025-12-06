@@ -75,6 +75,12 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Show interstitial for first-time browser visitors
+	if p.shouldShowInterstitial(r) {
+		p.serveInterstitial(w, r, subdomain)
+		return
+	}
+
 	clientIP := p.extractClientIP(r)
 
 	// Capture request data before forwarding
@@ -226,6 +232,142 @@ func (p *Proxy) extractClientIP(r *http.Request) string {
 	return ip
 }
 
+const bypassCookieName = "duct_bypass"
+
+// shouldShowInterstitial returns true if we should show the disclaimer page
+func (p *Proxy) shouldShowInterstitial(r *http.Request) bool {
+	// Only show for GET requests (initial page loads)
+	if r.Method != http.MethodGet {
+		return false
+	}
+
+	// Skip if already bypassed via cookie
+	if _, err := r.Cookie(bypassCookieName); err == nil {
+		return false
+	}
+
+	// Only show for requests that look like browsers wanting HTML
+	accept := r.Header.Get("Accept")
+	return strings.Contains(accept, "text/html")
+}
+
+// serveInterstitial shows a disclaimer page that sets a bypass cookie
+func (p *Proxy) serveInterstitial(w http.ResponseWriter, r *http.Request, subdomain string) {
+	html := `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>duct.sh - Tunnel Disclaimer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0a0a0a;
+            color: #e5e5e5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            max-width: 500px;
+        }
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #fff;
+        }
+        .warning {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        .warning p {
+            color: #999;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        .warning p:last-child {
+            margin-bottom: 0;
+        }
+        .subdomain {
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            color: #4ade80;
+        }
+        .button {
+            display: inline-block;
+            background: #fff;
+            color: #0a0a0a;
+            padding: 0.75rem 2rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+        }
+        .button:hover {
+            background: #e5e5e5;
+        }
+        .footer {
+            margin-top: 2rem;
+            font-size: 0.875rem;
+            color: #555;
+        }
+        .footer a {
+            color: #888;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>You're visiting a tunneled site</h1>
+        <div class="warning">
+            <p>This site is served through <span class="subdomain">` + subdomain + `.duct.sh</span>,
+            a temporary tunnel created by a duct.sh user.</p>
+            <p>The content comes from someone's local machine and is not hosted by duct.sh.
+            Proceed only if you trust the source.</p>
+        </div>
+        <form method="GET">
+            <button type="submit" class="button" name="duct_continue" value="1">Continue to site</button>
+        </form>
+        <div class="footer">Powered by <a href="https://duct.sh">duct.sh</a></div>
+    </div>
+</body>
+</html>`
+
+	// If user clicked continue, set cookie and redirect
+	if r.URL.Query().Get("duct_continue") == "1" {
+		http.SetCookie(w, &http.Cookie{
+			Name:     bypassCookieName,
+			Value:    "1",
+			Path:     "/",
+			MaxAge:   86400 * 7, // 7 days
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+		// Redirect to clean URL (remove the query param)
+		cleanURL := *r.URL
+		q := cleanURL.Query()
+		q.Del("duct_continue")
+		cleanURL.RawQuery = q.Encode()
+		http.Redirect(w, r, cleanURL.String(), http.StatusFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(html))
+}
+
 func (p *Proxy) serveLandingPage(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/robots.txt" {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -336,7 +478,7 @@ func (p *Proxy) serveLandingPage(w http.ResponseWriter, r *http.Request) {
                 <div class="feature-desc">Copy any request as a curl command to your clipboard.</div>
             </div>
         </div>
-        <div class="footer">Made by <a href="https://github.com/MorrisonWill">Will Morrison</a></div>
+        <div class="footer"><a href="https://github.com/MorrisonWill/duct.sh">GitHub</a></div>
     </div>
 </body>
 </html>`
