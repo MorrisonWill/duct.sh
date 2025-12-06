@@ -103,7 +103,8 @@ func (s *Server) handleTcpipForward(ctx ssh.Context, srv *ssh.Server, req *gossh
 	conn := ctx.Value(ssh.ContextKeyConn).(*gossh.ServerConn)
 
 	// Create the tunnel (allocates a port if BindPort is 0)
-	tun, url, allocatedPort := s.tunnelManager.CreateTunnel(conn, payload.BindPort)
+	// Pass the bind address so forwarded-tcpip can use the same address
+	tun, url, allocatedPort := s.tunnelManager.CreateTunnel(conn, payload.BindAddr, payload.BindPort)
 
 	// Store tunnel info in context for the session handler
 	ctx.SetValue("tunnel", tun)

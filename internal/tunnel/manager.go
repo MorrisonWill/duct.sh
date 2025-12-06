@@ -14,8 +14,9 @@ type Tunnel struct {
 	ID         string
 	Subdomain  string
 	SSHConn    *gossh.ServerConn
+	BindAddr   string // address the client requested to bind (must match in forwarded-tcpip)
 	BindPort   uint32 // port the client requested (usually 0)
-	ClientPort uint32 // port on client side (from -R arg, e.g., 3000)
+	ClientPort uint32 // allocated port for forwarded-tcpip
 	CreatedAt  time.Time
 }
 
@@ -40,7 +41,7 @@ func NewManager(baseDomain string) *Manager {
 
 // CreateTunnel creates a new tunnel for an SSH connection.
 // Returns the tunnel, public URL, and allocated port.
-func (m *Manager) CreateTunnel(sshConn *gossh.ServerConn, requestedPort uint32) (*Tunnel, string, uint32) {
+func (m *Manager) CreateTunnel(sshConn *gossh.ServerConn, bindAddr string, requestedPort uint32) (*Tunnel, string, uint32) {
 	subdomain := uuid.New().String()[:8]
 	tunnelID := uuid.New().String()
 
@@ -57,6 +58,7 @@ func (m *Manager) CreateTunnel(sshConn *gossh.ServerConn, requestedPort uint32) 
 		ID:         tunnelID,
 		Subdomain:  subdomain,
 		SSHConn:    sshConn,
+		BindAddr:   bindAddr,
 		BindPort:   requestedPort,
 		ClientPort: allocatedPort,
 		CreatedAt:  time.Now(),
@@ -105,13 +107,15 @@ func (m *Manager) Close(tunnelID string) {
 // This is how we send HTTP traffic back through the SSH connection.
 func (m *Manager) OpenChannel(tunnel *Tunnel) (gossh.Channel, error) {
 	// The payload for forwarded-tcpip channel
+	// CRITICAL: Addr and Port must match what client sent in tcpip-forward
+	// so the client can look up its forwarding rule
 	payload := gossh.Marshal(struct {
 		Addr       string
 		Port       uint32
 		OriginAddr string
 		OriginPort uint32
 	}{
-		Addr:       "127.0.0.1",
+		Addr:       tunnel.BindAddr,
 		Port:       tunnel.ClientPort,
 		OriginAddr: "127.0.0.1",
 		OriginPort: 0,
