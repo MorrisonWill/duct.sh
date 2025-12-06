@@ -103,6 +103,13 @@ func (m *Manager) GetByID(id string) (*Tunnel, bool) {
 	return t, ok
 }
 
+// Count returns the number of active tunnels
+func (m *Manager) Count() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.tunnels)
+}
+
 // Close removes a tunnel
 func (m *Manager) Close(tunnelID string) {
 	m.mu.Lock()

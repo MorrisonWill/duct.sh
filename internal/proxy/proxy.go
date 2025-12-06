@@ -444,6 +444,7 @@ func (p *Proxy) serveLandingPage(w http.ResponseWriter, r *http.Request) {
         .footer {
             margin-top: 3rem;
             font-size: 0.875rem;
+            color: #9ca3af;
         }
         .footer a {
             color: #9ca3af;
@@ -477,12 +478,13 @@ func (p *Proxy) serveLandingPage(w http.ResponseWriter, r *http.Request) {
                 <div class="feature-desc">Copy any request as a curl command to your clipboard.</div>
             </div>
         </div>
-        <div class="footer"><a href="https://github.com/MorrisonWill/duct.sh">GitHub</a></div>
+        <div class="footer">%d active tunnels · <a href="https://github.com/MorrisonWill/duct.sh">GitHub</a></div>
     </div>
 </body>
 </html>`
 
+	tunnelCount := p.tunnelManager.Count()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(html))
+	w.Write([]byte(fmt.Sprintf(html, tunnelCount)))
 }
