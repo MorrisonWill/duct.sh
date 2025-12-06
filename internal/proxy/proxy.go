@@ -438,20 +438,19 @@ func (p *Proxy) serveLandingPage(w http.ResponseWriter, r *http.Request) {
         }
         .feature-desc {
             font-size: 0.9375rem;
-            color: #666;
+            color: #9ca3af;
             line-height: 1.5;
         }
         .footer {
             margin-top: 3rem;
             font-size: 0.875rem;
-            color: #555;
         }
         .footer a {
-            color: #555;
+            color: #9ca3af;
             text-decoration: none;
         }
         .footer a:hover {
-            color: #888;
+            color: #d1d5db;
         }
     </style>
 </head>
