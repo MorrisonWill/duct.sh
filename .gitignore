@@ -1,3 +1,6 @@
 .env
 host_key.pub
 host_key
+
+# air build
+tmp/

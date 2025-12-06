@@ -153,11 +153,19 @@ func (p *Proxy) extractClientIP(r *http.Request) string {
 }
 
 func (p *Proxy) serveLandingPage(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/robots.txt" {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("User-agent: *\nAllow: /\n"))
+		return
+	}
+
 	html := `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Expose local servers to the internet via SSH.">
     <title>duct.sh</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
