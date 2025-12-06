@@ -10,7 +10,7 @@ Duct is an SSH tunneling service (similar to ngrok) written in Go. It exposes lo
 
 ```bash
 # Build the binary
-go build -o duct ./cmd/duct
+go build -o ./tmp/duct ./cmd/duct
 
 # Run the server
 ./duct

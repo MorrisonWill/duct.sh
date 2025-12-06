@@ -13,6 +13,7 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 
 	"github.com/MorrisonWill/duct.sh/internal/events"
+	"github.com/MorrisonWill/duct.sh/internal/store"
 	"github.com/MorrisonWill/duct.sh/internal/tunnel"
 	"github.com/MorrisonWill/duct.sh/internal/tui"
 )
@@ -21,6 +22,8 @@ type Server struct {
 	wishServer    *ssh.Server
 	tunnelManager *tunnel.Manager
 	eventHub      *events.Hub
+	store         *store.RequestStore
+	replayer      tui.Replayer
 	host          string
 	port          int
 	hostKeyPath   string
@@ -30,6 +33,8 @@ type Server struct {
 func New(
 	tunnelManager *tunnel.Manager,
 	eventHub *events.Hub,
+	requestStore *store.RequestStore,
+	replayer tui.Replayer,
 	host string,
 	port int,
 	hostKeyPath string,
@@ -38,6 +43,8 @@ func New(
 	return &Server{
 		tunnelManager: tunnelManager,
 		eventHub:      eventHub,
+		store:         requestStore,
+		replayer:      replayer,
 		host:          host,
 		port:          port,
 		hostKeyPath:   hostKeyPath,
@@ -147,7 +154,7 @@ func (s *Server) tunnelMiddleware() wish.Middleware {
 		renderer := bubbletea.MakeRenderer(sshSession)
 		styles := tui.NewStyles(renderer)
 
-		return tui.NewTunnelModel(tun, tunnelURL, eventCh, cleanup, styles), []tea.ProgramOption{tea.WithAltScreen()}
+		return tui.NewTunnelModel(tun, tunnelURL, eventCh, cleanup, styles, s.store, s.replayer), []tea.ProgramOption{tea.WithAltScreen()}
 	}
 
 	return bubbletea.Middleware(teaHandler)

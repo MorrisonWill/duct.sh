@@ -15,19 +15,37 @@ type RequestEvent struct {
 	StatusCode int
 	DurationMs int64
 	ClientIP   string
+	RecordID   string // Links to full RequestRecord in store
 }
+
+// ErrorEvent represents a forwarding error (e.g., local service unavailable)
+type ErrorEvent struct {
+	TunnelID  string
+	Timestamp time.Time
+	Method    string
+	Path      string
+	Message   string
+}
+
+// Event is an interface for tunnel events
+type Event interface {
+	GetTunnelID() string
+}
+
+func (e RequestEvent) GetTunnelID() string { return e.TunnelID }
+func (e ErrorEvent) GetTunnelID() string   { return e.TunnelID }
 
 // Hub manages event subscriptions and publishing
 type Hub struct {
 	mu          sync.RWMutex
-	subscribers map[string]chan RequestEvent // tunnelID -> channel
+	subscribers map[string]chan Event // tunnelID -> channel
 	bufferSize  int
 }
 
 // NewHub creates a new event hub
 func NewHub(bufferSize int) *Hub {
 	return &Hub{
-		subscribers: make(map[string]chan RequestEvent),
+		subscribers: make(map[string]chan Event),
 		bufferSize:  bufferSize,
 	}
 }
@@ -35,8 +53,8 @@ func NewHub(bufferSize int) *Hub {
 // Subscribe creates a subscription for a tunnel.
 // Returns a channel that receives events for that tunnel.
 // Only one subscriber per tunnel (the TUI session that owns it).
-func (h *Hub) Subscribe(tunnelID string) <-chan RequestEvent {
-	ch := make(chan RequestEvent, h.bufferSize)
+func (h *Hub) Subscribe(tunnelID string) <-chan Event {
+	ch := make(chan Event, h.bufferSize)
 
 	h.mu.Lock()
 	h.subscribers[tunnelID] = ch
@@ -58,9 +76,9 @@ func (h *Hub) Unsubscribe(tunnelID string) {
 
 // Publish sends an event to the tunnel's subscriber.
 // Non-blocking: drops event if channel is full.
-func (h *Hub) Publish(event RequestEvent) {
+func (h *Hub) Publish(event Event) {
 	h.mu.RLock()
-	ch, ok := h.subscribers[event.TunnelID]
+	ch, ok := h.subscribers[event.GetTunnelID()]
 	h.mu.RUnlock()
 
 	if !ok {

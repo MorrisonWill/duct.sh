@@ -11,7 +11,9 @@ import (
 	"github.com/MorrisonWill/duct.sh/internal/config"
 	"github.com/MorrisonWill/duct.sh/internal/events"
 	"github.com/MorrisonWill/duct.sh/internal/proxy"
+	"github.com/MorrisonWill/duct.sh/internal/replay"
 	"github.com/MorrisonWill/duct.sh/internal/sshd"
+	"github.com/MorrisonWill/duct.sh/internal/store"
 	"github.com/MorrisonWill/duct.sh/internal/tunnel"
 )
 
@@ -20,9 +22,11 @@ func main() {
 
 	eventHub := events.NewHub(100)
 	tunnelManager := tunnel.NewManager(cfg.BaseDomain, cfg.HTTPPort, cfg.UseHTTPS)
+	requestStore := store.NewRequestStore(store.DefaultMaxRecords)
+	replayer := replay.New()
 
 	// Start HTTP proxy
-	httpProxy := proxy.New(tunnelManager, eventHub, cfg.BaseDomain, cfg.HTTPPort)
+	httpProxy := proxy.New(tunnelManager, eventHub, requestStore, cfg.BaseDomain, cfg.HTTPPort)
 	go func() {
 		if err := httpProxy.Start(); err != nil {
 			log.Fatalf("HTTP proxy failed: %v", err)
@@ -33,6 +37,8 @@ func main() {
 	sshServer := sshd.New(
 		tunnelManager,
 		eventHub,
+		requestStore,
+		replayer,
 		cfg.SSHHost,
 		cfg.SSHPort,
 		cfg.HostKeyPath,
