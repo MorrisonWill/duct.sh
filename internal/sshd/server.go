@@ -56,7 +56,7 @@ func (s *Server) Start() error {
 	srv, err := wish.NewServer(
 		wish.WithAddress(fmt.Sprintf("%s:%d", s.host, s.port)),
 		wish.WithHostKeyPath(s.hostKeyPath),
-		wish.WithPublicKeyAuth(s.publicKeyHandler),
+		ssh.PublicKeyAuth(func(ctx ssh.Context, key ssh.PublicKey) bool { return true }),
 		wish.WithMiddleware(
 			s.tunnelMiddleware(),
 			activeterm.Middleware(),
@@ -85,14 +85,6 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// publicKeyHandler accepts all public keys.
-// We identify users by their key fingerprint.
-func (s *Server) publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
-	fingerprint := gossh.FingerprintSHA256(key)
-	ctx.SetValue("fingerprint", fingerprint)
-	log.Printf("Auth: fingerprint=%s", fingerprint)
-	return true
-}
 
 // handleTcpipForward handles ssh -R requests.
 // This is called when the client requests remote port forwarding.
